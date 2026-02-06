@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quanah's Eye Command Center</title>
+    <style>
+        :root {
+            --bg-color: #121212; /* Dark Mode for Eye Safety */
+            --text-color: #e0e0e0;
+            --rose-tint: #ffc2cd; /* FL-41 Inspiration */
+            --alert-color: #ff5555;
+            --safe-color: #55ff7f;
+            --blue-light: #55aaff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* --- HEADER & STATUS --- */
+        #header {
+            width: 100%;
+            padding: 20px;
+            background: #1e1e1e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--rose-tint);
+        }
+
+        #clock { font-size: 1.5rem; font-weight: bold; }
+        
+        #drop-status { 
+            font-size: 1.2rem; 
+            color: var(--blue-light);
+            border: 1px solid var(--blue-light);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        /* --- MAIN DASHBOARD --- */
+        #dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 40px;
+            width: 80%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: #252525;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.2s;
+            cursor: pointer;
+            border: 1px solid #333;
+        }
+
+        .card:hover { transform: scale(1.02); border-color: var(--rose-tint); }
+        
+        h2 { margin-top: 0; color: var(--rose-tint); }
+        p { color: #aaa; }
+
+        /* --- MODALS & OVERLAYS --- */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .timer-display { font-size: 5rem; font-family: monospace; color: var(--safe-color); }
+        .instruction { font-size: 2rem; margin-bottom: 20px; text-align: center; }
+        
+        button.action-btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+        }
+        
+        .btn-start { background-color: var(--safe-color); color: #000; }
+        .btn-stop { background-color: var(--alert-color); color: white; }
+
+        /* --- 20-20-20 FLASH --- */
+        #vision-break {
+            background: #000;
+            z-index: 200;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div id="clock">00:00:00</div>
+        <div id="drop-status">Next Drops: CALCULATING...</div>
+        <button onclick="toggleAudio()" style="background:none; border:1px solid #555; color:#aaa; cursor:pointer;">🔊 Audio: ON</button>
+    </div>
+
+    <div id="dashboard">
+        <div class="card" onclick="startWorkSession()">
+            <h2>🖥️ Deep Work Mode</h2>
+            <p>Starts 20-20-20 Timer.<br><strong>Reminder:</strong> Wear Rose FL-41 Glasses.</p>
+        </div>
+
+        <div class="card" onclick="openRescueMenu()">
+            <h2>🚑 Eye Rescue</h2>
+            <p>Pain or Dryness?<br>Activates Heat or Cold protocols.</p>
+        </div>
+
+        <div class="card" onclick="recordDrops()">
+            <h2>💧 Record Drops</h2>
+            <p>Click when you take <strong>Refresh Digital</strong>.<br>Safety Limit: 4x Daily.</p>
+        </div>
+
+        <div class="card" onclick="openPatchMenu()">
+            <h2>🏴‍☠️ Patch Mode</h2>
+            <p>One-Eye Work vs. Total Rest.<br>Manage fatigue.</p>
+        </div>
+    </div>
+
+    <div id="rescue-menu" class="overlay">
+        <div class="instruction">What are you feeling?</div>
+        <button class="action-btn btn-start" onclick="startHeat()">Gritty / Dry (Start Heat)</button>
+        <button class="action-btn btn-stop" onclick="startCold()">Aching / Swollen (Start Cold)</button>
+        <button class="action-btn" onclick="closeOverlays()">Cancel</button>
+    </div>
+
+    <div id="patch-menu" class="overlay">
+        <div class="instruction">Select Patch Strategy</div>
+        <button class="action-btn btn-start" onclick="alert('Use GLASSES PATCH. 1.0x Readers NOT allowed for screen.'); closeOverlays();">One-Eye Work (Glasses Patch)</button>
+        <button class="action-btn btn-stop" onclick="alert('Use ELASTIC PATCH. Lights out.'); closeOverlays();">Total Blackout (Elastic Patch)</button>
+        <button class="action-btn" onclick="closeOverlays()">Cancel</button>
+    </div>
+
+    <div id="active-timer" class="overlay">
+        <div id="timer-instruction" class="instruction">Instruction Here</div>
+        <div id="timer-countdown" class="timer-display">00:00</div>
+        <button class="action-btn btn-stop" onclick="stopTimers()">End Session</button>
+    </div>
+
+    <div id="vision-break" class="overlay">
+        <div class="instruction" style="color:var(--rose-tint)">LOOK AWAY NOW</div>
+        <div class="instruction">Focus on something 20 feet away.</div>
+        <div id="break-countdown" class="timer-display">20</div>
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    let audioEnabled = true;
+    let workInterval;
+    let dropCount = 0;
+    const MAX_DROPS = 4;
+    
+    // --- CLOCK & SCHEDULE ---
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString();
+        updateDropSchedule(now.getHours());
+    }, 1000);
+
+    function updateDropSchedule(hour) {
+        let msg = "";
+        if (dropCount >= MAX_DROPS) {
+            msg = "⚠️ MAX LIMIT REACHED (Switch to PF)";
+            document.getElementById('drop-status').style.borderColor = "red";
+            document.getElementById('drop-status').style.color = "red";
+        } else {
+            if (hour < 8) msg = "Next Zone: Morning (8:00 AM)";
+            else if (hour < 12) msg = "Next Zone: Lunch (12:00 PM)";
+            else if (hour < 16) msg = "Next Zone: Afternoon (4:00 PM)";
+            else if (hour < 20) msg = "Next Zone: Bedtime (8:00 PM)";
+            else msg = "Schedule Complete for Day";
+        }
+        document.getElementById('drop-status').innerText = msg + ` | Taken: ${dropCount}/${MAX_DROPS}`;
+    }
+
+    // --- AUDIO SYSTEM ---
+    function speak(text) {
+        if (!audioEnabled) return;
+        const utterance = new SpeechSynthesisUtterance(text);
+        window.speechSynthesis.speak(utterance);
+    }
+    
+    function toggleAudio() {
+        audioEnabled = !audioEnabled;
+        alert("Audio is now " + (audioEnabled ? "ON" : "OFF"));
+    }
+
+    // --- WORK MODE (20-20-20) ---
+    function startWorkSession() {
+        speak("Deep work mode engaged. Please put on your FL 41 Rose glasses now.");
+        alert("Session Started. I will alert you every 20 minutes.");
+        
+        // Clear existing just in case
+        if (workInterval) clearInterval(workInterval);
+
+        // Set 20 minute timer (1200000 ms)
+        workInterval = setInterval(() => {
+            triggerVisionBreak();
+        }, 1200000); 
+    }
+
+    function triggerVisionBreak() {
+        speak("Vision break. Look away now.");
+        const overlay = document.getElementById('vision-break');
+        overlay.style.display = 'flex';
+        let timeLeft = 20;
+        
+        const breakTimer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('break-countdown').innerText = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(breakTimer);
+                overlay.style.display = 'none';
+                speak("Resume work.");
+            }
+        }, 1000);
+    }
+
+    // --- RESCUE MODES ---
+    function openRescueMenu() { document.getElementById('rescue-menu').style.display = 'flex'; }
+    function openPatchMenu() { document.getElementById('patch-menu').style.display = 'flex'; }
+    function closeOverlays() { 
+        document.querySelectorAll('.overlay').forEach(el => el.style.display = 'none'); 
+    }
+
+    function startHeat() {
+        closeOverlays();
+        startTimer("Applying TearRestore Heat. Relax.", 10 * 60); // 10 mins
+        speak("Starting heat therapy. Ten minutes.");
+    }
+
+    function startCold() {
+        closeOverlays();
+        startTimer("Applying NEWGO Cold Pack. Reduce Swelling.", 15 * 60); // 15 mins
+        speak("Starting cold therapy. Fifteen minutes.");
+    }
+
+    function startTimer(label, durationSec) {
+        const overlay = document.getElementById('active-timer');
+        document.getElementById('timer-instruction').innerText = label;
+        overlay.style.display = 'flex';
+        
+        let timeLeft = durationSec;
+        window.activeCountdown = setInterval(() => {
+            let m = Math.floor(timeLeft / 60);
+            let s = timeLeft % 60;
+            document.getElementById('timer-countdown').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+            timeLeft--;
+            
+            if (timeLeft < 0) {
+                stopTimers();
+                speak("Therapy complete.");
+                alert("Time is up! Remove the mask.");
+            }
+        }, 1000);
+    }
+
+    function stopTimers() {
+        if (window.activeCountdown) clearInterval(window.activeCountdown);
+        closeOverlays();
+    }
+
+    // --- DROP RECORDING ---
+    function recordDrops() {
+        if (dropCount >= MAX_DROPS) {
+            speak("Warning. Daily limit reached. Do not use standard bottle.");
+            alert("⚠️ SAFETY WARNING: You have reached 4 doses.\n\nSwitch to Preservative-Free vials if you need more.");
+            return;
+        }
+        dropCount++;
+        speak("Drop recorded.");
+        updateDropSchedule(new Date().getHours());
+    }
+
+</script>
+</body>
+</html>
