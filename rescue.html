@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quanah's Eye Command Center v2.0</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --rose-tint: #ffc2cd;
+            --alert-color: #ff5555;
+            --safe-color: #55ff7f;
+            --blue-light: #55aaff;
+            --card-bg: #1e1e1e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* --- HEADER --- */
+        #header {
+            width: 100%;
+            padding: 15px 30px;
+            background: #181818;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--rose-tint);
+            box-sizing: border-box;
+        }
+
+        #clock { font-size: 1.8rem; font-weight: bold; letter-spacing: 1px; }
+        
+        #drop-status { 
+            font-size: 1.1rem; 
+            color: var(--blue-light);
+            border: 1px solid var(--blue-light);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        /* --- DASHBOARD GRID --- */
+        #dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            padding: 40px;
+            width: 90%;
+            max-width: 1100px;
+            flex-grow: 1;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .card:hover { 
+            transform: translateY(-5px); 
+            border-color: var(--rose-tint); 
+            box-shadow: 0 8px 15px rgba(255, 194, 205, 0.1);
+        }
+        
+        .card h2 { margin: 0 0 10px 0; color: var(--rose-tint); font-size: 1.8rem; }
+        .card p { color: #aaa; margin: 0; font-size: 1.1rem; line-height: 1.4; }
+        .icon { font-size: 3rem; margin-bottom: 15px; display: block; }
+
+        /* --- OVERLAYS --- */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .timer-display { 
+            font-size: 6rem; 
+            font-family: 'Courier New', monospace; 
+            color: var(--safe-color); 
+            text-shadow: 0 0 20px rgba(85, 255, 127, 0.3);
+            margin: 20px 0;
+        }
+
+        .instruction { font-size: 2rem; margin-bottom: 30px; text-align: center; max-width: 80%; }
+        
+        button.action-btn {
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+        
+        button.action-btn:active { transform: scale(0.95); }
+        .btn-start { background-color: var(--safe-color); color: #000; }
+        .btn-stop { background-color: var(--alert-color); color: white; }
+        .btn-neutral { background-color: #444; color: #fff; }
+
+        /* --- UTILS --- */
+        #vision-break { background: #000; z-index: 2000; }
+        .permission-banner {
+            background: var(--blue-light);
+            color: #000;
+            width: 100%;
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+            display: none; /* Hidden by default */
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="perm-request" class="permission-banner" onclick="requestPermission()">
+        ⚠️ CLICK HERE to Enable Desktop/Phone Alerts
+    </div>
+
+    <div id="header">
+        <div id="clock">00:00:00</div>
+        <div id="drop-status">Initializing...</div>
+        <div>
+            <button onclick="addCalendarReminder()" style="background:#333; border:1px solid #555; color:#fff; padding: 5px 10px; border-radius: 5px; cursor:pointer; margin-right: 10px;">📅 Set Phone Alarm</button>
+            <button onclick="toggleAudio()" id="audio-btn" style="background:none; border:1px solid #555; color:#aaa; padding: 5px 10px; border-radius: 5px; cursor:pointer;">🔊 Audio: ON</button>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <div class="card" onclick="startWorkSession()">
+            <span class="icon">🖥️</span>
+            <h2>Deep Work Mode</h2>
+            <p>Starts 20-min Loops.<br><strong>Reminder:</strong> Wear Rose FL-41 Glasses.</p>
+        </div>
+
+        <div class="card" onclick="openRescueMenu()">
+            <span class="icon">🚑</span>
+            <h2>Eye Rescue</h2>
+            <p>Pain or Dryness?<br>Activates Heat or Cold protocols.</p>
+        </div>
+
+        <div class="card" onclick="recordDrops()">
+            <span class="icon">💧</span>
+            <h2>Record Drops</h2>
+            <p>Log "Refresh Digital".<br>Safety Limit: 4x Daily.</p>
+        </div>
+
+        <div class="card" onclick="openPatchMenu()">
+            <span class="icon">🏴‍☠️</span>
+            <h2>Patch Mode</h2>
+            <p>One-Eye Work vs. Total Rest.<br>Manage fatigue.</p>
+        </div>
+    </div>
+
+    <div id="rescue-menu" class="overlay">
+        <div class="instruction">What are you feeling?</div>
+        <button class="action-btn btn-start" onclick="startHeat()">Gritty / Dry (Start Heat)</button>
+        <button class="action-btn btn-stop" onclick="startCold()">Aching / Swollen (Start Cold)</button>
+        <button class="action-btn btn-neutral" onclick="closeOverlays()">Cancel</button>
+    </div>
+
+    <div id="patch-menu" class="overlay">
+        <div class="instruction">Select Patch Strategy</div>
+        <button class="action-btn btn-start" onclick="notify('Patch Mode', 'Using Glasses Patch. 1.0x Readers only.'); closeOverlays();">One-Eye Work (Glasses Patch)</button>
+        <button class="action-btn btn-stop" onclick="notify('Blackout Mode', 'Using Elastic Patch. Lights out.'); closeOverlays();">Total Blackout (Elastic Patch)</button>
+        <button class="action-btn btn-neutral" onclick="closeOverlays()">Cancel</button>
+    </div>
+
+    <div id="active-timer" class="overlay">
+        <div id="timer-instruction" class="instruction">Instruction Here</div>
+        <div id="timer-countdown" class="timer-display">00:00</div>
+        <button class="action-btn btn-stop" onclick="stopTimers()">End Session</button>
+    </div>
+
+    <div id="vision-break" class="overlay">
+        <div class="instruction" style="color:var(--rose-tint); font-weight:bold;">STOP. LOOK AWAY.</div>
+        <div class="instruction">Focus on something 20 feet away.</div>
+        <div id="break-countdown" class="timer-display">20</div>
+    </div>
+
+<script>
+    // --- SYSTEM CONFIG ---
+    let audioEnabled = true;
+    let workInterval;
+    let dropCount = 0;
+    const MAX_DROPS = 4;
+    
+    // --- INITIALIZATION ---
+    window.onload = function() {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            document.getElementById('perm-request').style.display = 'block';
+        }
+    };
+
+    function requestPermission() {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                document.getElementById('perm-request').style.display = 'none';
+                notify("System Online", "Notifications are active, Q.");
+            }
+        });
+    }
+
+    function notify(title, body) {
+        // 1. Browser Notification
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: body, icon: '' });
+        } else {
+            // Fallback if they didn't click allow
+            alert(`${title}\n\n${body}`);
+        }
+        // 2. Audio Backup
+        speak(body);
+    }
+
+    // --- CLOCK & LOGIC ---
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString();
+        updateDropSchedule(now.getHours());
+    }, 1000);
+
+    function updateDropSchedule(hour) {
+        let msg = "";
+        const statusEl = document.getElementById('drop-status');
+        
+        if (dropCount >= MAX_DROPS) {
+            msg = "⚠️ MAX LIMIT (Switch to PF Vials)";
+            statusEl.style.borderColor = "var(--alert-color)";
+            statusEl.style.color = "var(--alert-color)";
+        } else {
+            statusEl.style.borderColor = "var(--blue-light)";
+            statusEl.style.color = "var(--blue-light)";
+            if (hour < 8) msg = "Zone: Morning";
+            else if (hour < 12) msg = "Zone: Lunch";
+            else if (hour < 16) msg = "Zone: Afternoon";
+            else if (hour < 20) msg = "Zone: Bedtime";
+            else msg = "Schedule Complete";
+        }
+        statusEl.innerText = `${msg} | Taken: ${dropCount}/${MAX_DROPS}`;
+    }
+
+    // --- AUDIO ---
+    function speak(text) {
+        if (!audioEnabled) return;
+        window.speechSynthesis.cancel(); // Kill previous speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.1;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+    
+    function toggleAudio() {
+        audioEnabled = !audioEnabled;
+        const btn = document.getElementById('audio-btn');
+        btn.innerText = "🔊 Audio: " + (audioEnabled ? "ON" : "OFF");
+        btn.style.color = audioEnabled ? "#aaa" : "#555";
+    }
+
+    // --- EXTERNAL CALENDAR LINK ---
+    function addCalendarReminder() {
+        // Creates a Google Calendar link for a recurring eye break
+        const text = "Eye%20Safety%20Check%3A%20Drops%20%26%20Patch";
+        const details = "Time%20to%20rest%20eyes%2C%20check%20dryness%2C%20and%20use%20FL-41%20glasses.";
+        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}`;
+        window.open(url, '_blank');
+    }
+
+    // --- WORK MODE ---
+    function startWorkSession() {
+        notify("Deep Work Engaged", "Please ensure Rose FL-41 glasses are ON.");
+        
+        if (workInterval) clearInterval(workInterval);
+
+        // 20 Minute Loop
+        workInterval = setInterval(() => {
+            triggerVisionBreak();
+        }, 20 * 60 * 1000); 
+    }
+
+    function triggerVisionBreak() {
+        // High priority alert
+        const overlay = document.getElementById('vision-break');
+        overlay.style.display = 'flex';
+        
+        // Repeated audio alert for urgency
+        let alertCount = 0;
+        const alertInterval = setInterval(() => {
+            if(alertCount < 3) speak("Vision break. Look away now.");
+            alertCount++;
+        }, 2000);
+
+        let timeLeft = 20;
+        const breakTimer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('break-countdown').innerText = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(breakTimer);
+                clearInterval(alertInterval);
+                overlay.style.display = 'none';
+                notify("Break Complete", "You may resume work.");
+            }
+        }, 1000);
+    }
+
+    // --- RESCUE TIMERS ---
+    function openRescueMenu() { document.getElementById('rescue-menu').style.display = 'flex'; }
+    function openPatchMenu() { document.getElementById('patch-menu').style.display = 'flex'; }
+    function closeOverlays() { 
+        document.querySelectorAll('.overlay').forEach(el => {
+            if(el.id !== 'vision-break') el.style.display = 'none';
+        }); 
+    }
+
+    function startHeat() {
+        closeOverlays();
+        startTimer("Heat Therapy: Relax.", 10 * 60);
+        speak("Starting heat therapy. Ten minutes.");
+    }
+
+    function startCold() {
+        closeOverlays();
+        startTimer("Cold Therapy: Reduce Swelling.", 15 * 60);
+        speak("Starting cold therapy. Fifteen minutes.");
+    }
+
+    function startTimer(label, durationSec) {
+        const overlay = document.getElementById('active-timer');
+        document.getElementById('timer-instruction').innerText = label;
+        overlay.style.display = 'flex';
+        
+        let timeLeft = durationSec;
+        if (window.activeCountdown) clearInterval(window.activeCountdown);
+
+        window.activeCountdown = setInterval(() => {
+            let m = Math.floor(timeLeft / 60);
+            let s = timeLeft % 60;
+            document.getElementById('timer-countdown').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+            timeLeft--;
+            
+            if (timeLeft < 0) {
+                stopTimers();
+                notify("Therapy Complete", "Please remove the mask slowly.");
+            }
+        }, 1000);
+    }
+
+    function stopTimers() {
+        if (window.activeCountdown) clearInterval(window.activeCountdown);
+        if (workInterval) clearInterval(workInterval);
+        closeOverlays();
+        speak("Timers stopped.");
+    }
+
+    // --- DROPS ---
+    function recordDrops() {
+        if (dropCount >= MAX_DROPS) {
+            notify("MAX DOSE WARNING", "You have reached 4 doses. Switch to Preservative-Free vials.");
+            return;
+        }
+        dropCount++;
+        notify("Drop Recorded", `Total today: ${dropCount}`);
+        updateDropSchedule(new Date().getHours());
+    }
+
+</script>
+</body>
+</html>
